@@ -73,9 +73,10 @@ def init_groq_api(model_name: str = Query('llama3-8b-8192', description="Name of
     return {"message": "LLM initialized"}
 
 @app.post("/upload")
-def upload_file(file: UploadFile = File(...), collection_name : Optional[str] = Form("test_collection")):
+def upload_file(file: UploadFile = File(...), collection_name : Optional[str] = Form(...)):
     try:
         print(collection_name)
+
         logger.info("Reading contents from Uploaded File")
         contents = file.file.read()
         with open(f'./data/{file.filename}', 'wb') as f:
@@ -83,7 +84,7 @@ def upload_file(file: UploadFile = File(...), collection_name : Optional[str] = 
         logger.info(f"Loaded content and file saved locally...")
     except Exception:
         logger.error(f"Error in reading Uploaded file in local......")
-        return {"message": "There was an error uploading the file"}
+        return {"message": "There was an error uploading the file","status":"Uploading File Error"}
     finally:
         file.file.close()
     
@@ -94,15 +95,15 @@ def upload_file(file: UploadFile = File(...), collection_name : Optional[str] = 
         logger.info(f"Loading and splitting file into chunks........")
         data = load_split_html_file(f'./data/{file.filename}', text_splitter)
     else:
-        return {"message": "Only pdf and html files are supported"}
+        return {"message": "Only pdf and html files are supported","status":"File Format Error"}
     
     logger.info(f"Creating VectorDB for Uploaded file.......")
     db = create_vector_db(data, vector_db_model_name, collection_name)
     logger.info(f"Completed VectorDB creation.......")
 
     if db is None:
-        return {"message": f"Successfully uploaded {file.filename}", 
-                "num_splits" : len(data)}
+        return {"message": f"Successfully uploaded {file.filename} to {collection_name}", 
+                "num_splits" : len(data),"status":"collection_created"}
     else:
         return db
 
@@ -123,8 +124,9 @@ def query(query : str, n_results : Optional[int] = 2, collection_name : Optional
     prompt = create_prompt(query, results)
     output = ml_models["answer_to_query"].complete(prompt)
     return {"message": f"Query is {query}",
-            "relavent_docs" : results,
-            "llm_output" : output}
+        "relavent_docs" : results,
+        "llm_output" : output}
+    
 
 
 if __name__ == "__main__":

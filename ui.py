@@ -22,6 +22,12 @@ if "conversation_history" not in st.session_state:
 if "n_results" not in st.session_state:
     st.session_state.n_results = 2  # Default value
 
+if "collection_exists" not in st.session_state:
+    st.session_state.collection_exists = False
+
+if "pending_file" not in st.session_state:
+    st.session_state.pending_file = False
+
 # Move Step 1 (Initialization) to the sidebar if successful
 with st.sidebar:
     st.header("Steps")
@@ -49,7 +55,7 @@ if not st.session_state.llm_initialized:
             st.session_state.model_name = model_name
             st.session_state.api_key = api_key
             st.success(f"LLM Initialized: {model_name}")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error(f"Error: {init_response.json()['message']}")
 
@@ -60,24 +66,46 @@ elif st.session_state.llm_initialized and not st.session_state.file_uploaded:
     st.header("Step 2: Upload PDF/HTML File")
     with st.form("upload_form"):
         uploaded_file = st.file_uploader("Choose a PDF or HTML file", type=["pdf", "html"])
-        collection_name = st.text_input("Collection Name", value="test_collection")
+        collection_name = st.text_input("Collection Name")
         upload = st.form_submit_button("Upload")
 
     if upload and uploaded_file is not None:
-        files = {
-            "file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
-        }
+        if not st.session_state.pending_file:
+
+            st.session_state.pending_file = {
+                "file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
+            }
+        st.session_state.current_collection_name = collection_name
+
         data = {"collection_name": collection_name}
-        upload_response = requests.post(f"{base_url}/upload", files=files, data=data)
+        upload_response = requests.post(f"{base_url}/upload", files=st.session_state.pending_file, data=data)
 
         if upload_response.status_code == 200:
-            st.session_state.file_uploaded = True
-            st.session_state.collection_name = collection_name
-            # st.success(f"File '{uploaded_file.name}' uploaded successfully")
-            st.write(upload_response.json())
-            # st.experimental_rerun()
+            response_data = upload_response.json()
+
+            if 'status' in response_data and response_data['status'] == 'collection_exists':
+                st.warning(response_data['message'])
+                st.session_state.collection_exists = True
+            else:
+                st.session_state.file_uploaded = True
+                st.session_state.collection_name = collection_name
+                st.success(f"File '{uploaded_file.name}' uploaded successfully to '{collection_name}'")
+                
+                # Clean up session state
+                if "pending_file" in st.session_state:
+                    print('del pend file')
+                    del st.session_state.pending_file
+                if "collection_exists" in st.session_state:
+                    print('del coll ')
+                    del st.session_state.collection_exists
+
+                st.rerun()
         else:
-            st.error(f"Error: {upload_response.json()['message']}")
+            st.error(f"Error:{upload_response.text}")
+            st.session_state.collection_exists = False
+    if st.session_state.collection_exists:
+        st.info("Please enter a different collection name and click 'Upload' again")
+
 
 # Step 3: Chat with LLM (only after file is uploaded)
 elif st.session_state.file_uploaded:
@@ -128,4 +156,5 @@ elif st.session_state.file_uploaded:
             with st.chat_message("assistant"):
                 st.markdown(llm_response['text'])
         else:
-            st.error(f"Error: {query_response.json()['message']}")
+            # st.error(f"Error: {query_response.json()}")
+            st.error(f"Error: {query_response.status_code} - {query_response.text}")

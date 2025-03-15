@@ -47,9 +47,10 @@ def create_vector_db(docs, model_name, collection_name):
             print( [
             collct.name for collct in chroma_client.list_collections()
         ])
-            print(collection_name)
             collection = chroma_client.get_collection(name=collection_name)
-            return {'ERROR': f"There already exists a collection with {collection_name}. Please give a new collection name"}
+            return {'message': f"There already exists a collection with {collection_name}. Please give a new collection name",
+                    "status": "collection_exists"
+                    }
         else:
             # create the open-source embedding function
             logger.info("Creating new collection for the uploaded file.....")
