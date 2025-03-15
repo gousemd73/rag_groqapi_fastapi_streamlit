@@ -22,8 +22,8 @@ This project has been inspired by [Ashish Sinha's RAG API repository](https://gi
 ## Installation
 ```sh
 # Clone the repository
-git clone <repo-url>
-cd <repo-name>
+git clone https://github.com/gousemd73/rag_groqapi_fastapi_streamlit.git>
+cd rag_groqapi_fastapi_streamlit
 
 # Create a virtual environment
 python -m venv venv
@@ -74,6 +74,5 @@ streamlit run ui.py
 - Inspired by [Ashish Sinha's RAG API](https://github.com/AshishSinha5/rag_api/tree/main)
 - Built using **Groq API, FastAPI, Streamlit, LangChain, ChromaDB, and Llama 3.2**.
 
-## License
-MIT License
+
 
